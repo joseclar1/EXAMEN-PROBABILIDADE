@@ -1,0 +1,1044 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Evaluación Interactiva - I.E. Santísima Niña María</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .fade-in { animation: fadeIn 0.45s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .heart-beat { animation: heartbeat 1.5s infinite; }
+        @keyframes heartbeat { 
+            0% { transform: scale(1); } 
+            15% { transform: scale(1.2); } 
+            30% { transform: scale(1); } 
+            45% { transform: scale(1.2); } 
+            60% { transform: scale(1); } 
+        }
+        .heart-lost { filter: grayscale(100%); opacity: 0.3; animation: none; }
+        
+        .feedback-pop { 
+            animation: popIn 0.9s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; 
+        }
+        @keyframes popIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { transform: scale(1.15); opacity: 1; }
+            100% { transform: scale(1); opacity: 0; }
+        }
+
+        #custom-notification {
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translateY(-20px);
+            opacity: 0;
+            pointer-events: none;
+        }
+        #custom-notification.show {
+            transform: translateY(0);
+            opacity: 1;
+            pointer-events: auto;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-amber-950 via-orange-950 to-stone-950 min-h-screen text-white flex items-center justify-center p-4">
+
+    <!-- Notificación Custom -->
+    <div id="custom-notification" class="fixed top-5 left-1/2 transform -translate-x-1/2 z-50 bg-red-600 text-white px-6 py-3 rounded-xl shadow-2xl font-bold flex items-center gap-3">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
+        <span id="notification-msg">Mensaje de alerta</span>
+        <button onclick="hideNotification()" class="ml-4 text-white hover:text-red-200 font-black">✖</button>
+    </div>
+
+    <!-- Feedback visual animado -->
+    <div id="feedback-overlay" class="fixed inset-0 flex items-center justify-center pointer-events-none z-50 hidden">
+        <h2 id="feedback-text" class="text-5xl md:text-7xl font-black text-amber-300 drop-shadow-[0_5px_5px_rgba(0,0,0,0.85)] text-center tracking-wider"></h2>
+    </div>
+
+    <div class="max-w-3xl w-full bg-amber-50/95 text-stone-800 rounded-3xl shadow-2xl overflow-hidden fade-in relative border border-amber-200">
+        
+        <!-- CABECERA INSTITUCIONAL -->
+        <header class="bg-gradient-to-r from-amber-700 to-orange-700 text-white p-6 text-center shadow-md relative z-10">
+            <p class="text-xs uppercase tracking-widest text-amber-200 font-bold mb-1">Sistema de Evaluación Interactiva</p>
+            <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">I.E. Santísima Niña María</h1>
+            <p class="text-amber-100 font-semibold mt-1 text-base md:text-lg">Matemática • 3ro de Secundaria</p>
+            <div class="inline-block bg-amber-950/60 border border-amber-300/40 text-amber-100 px-4 py-1 rounded-full font-bold mt-3 text-xs md:text-sm uppercase tracking-wide">
+                Tema: Probabilidades
+            </div>
+        </header>
+
+        <!-- PANTALLA DE REGISTRO -->
+        <div id="screen-register" class="p-6 md:p-8">
+            <h2 class="text-2xl font-extrabold text-center mb-2 text-amber-900">¡Bienvenidas, queridas estudiantes!</h2>
+            <p class="text-center text-stone-600 mb-8 text-sm md:text-base">Selecciona tu grado y sección para buscar tu nombre en la lista e iniciar tu evaluación.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                    <label class="block text-sm font-bold text-stone-700 mb-2">Grado</label>
+                    <select id="sel-grado" class="w-full p-3 border-2 border-amber-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white outline-none transition font-medium">
+                        <option value="">Selecciona tu grado</option>
+                        <option value="3" selected>3ro Secundaria</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-stone-700 mb-2">Sección</label>
+                    <select id="sel-seccion" class="w-full p-3 border-2 border-amber-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white outline-none transition font-medium">
+                        <option value="">Selecciona tu sección</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <button id="btn-buscar-alumnas" class="w-full bg-amber-600 hover:bg-amber-700 text-white font-bold py-3.5 px-4 rounded-xl shadow-lg transition transform hover:-translate-y-0.5">
+                    🔍 Buscar mi nombre en la lista
+                </button>
+            </div>
+
+            <div id="container-nombre" class="hidden fade-in">
+                <label class="block text-sm font-bold text-stone-700 mb-2">Nombre de la alumna</label>
+                <select id="sel-nombre" class="w-full p-3 border-2 border-amber-300 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 bg-white outline-none transition mb-6 font-medium">
+                    <option value="">Selecciona tu nombre</option>
+                </select>
+
+                <button id="btn-iniciar" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-extrabold py-4 px-4 rounded-xl shadow-lg text-lg transition transform hover:-translate-y-0.5">
+                    🚀 ¡Comenzar Evaluación!
+                </button>
+            </div>
+            
+            <div id="loading-msg" class="hidden text-center text-amber-800 font-semibold mt-4 animate-pulse">
+                Conectando con la base de datos institucional...
+            </div>
+
+            <!-- FIRMA DEL DOCENTE -->
+            <div class="mt-8 pt-4 border-t border-amber-200 text-center text-sm text-stone-500">
+                Elaborado por: <span class="font-bold text-amber-900">JOSE CLARES</span>
+            </div>
+        </div>
+
+        <!-- PANTALLA DE JUEGO / EVALUACIÓN -->
+        <div id="screen-game" class="hidden p-6 md:p-8 fade-in relative">
+            
+            <!-- Barra de tiempo -->
+            <div class="w-full bg-amber-200 rounded-full h-4 mb-5 relative overflow-hidden shadow-inner border border-amber-300">
+                <div id="timer-bar" class="bg-amber-600 h-4 rounded-full transition-all duration-1000 ease-linear" style="width: 100%"></div>
+                <div class="absolute inset-0 flex items-center justify-center text-xs font-extrabold text-stone-900" style="text-shadow: 0 0 3px white;" id="timer-text">45s</div>
+            </div>
+
+            <!-- Panel de estado -->
+            <div class="flex flex-wrap justify-between items-center gap-3 mb-6 bg-amber-100/90 p-4 rounded-2xl border border-amber-300">
+                <div class="flex items-center gap-2">
+                    <span class="font-bold text-amber-950 text-sm md:text-base">Vidas:</span>
+                    <div id="lives-container" class="flex gap-1 text-red-600 text-xl"></div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btn-audio-toggle" onclick="toggleAudio()" title="Activar/Silenciar Audio Inteligente" class="bg-white border border-amber-300 text-amber-900 px-3 py-1 rounded-lg text-xs font-bold hover:bg-amber-200 transition">
+                        🔊 Audio ON
+                    </button>
+                </div>
+                <div class="text-right">
+                    <span class="font-bold text-amber-950 text-sm md:text-base">Puntaje:</span>
+                    <span id="score-display" class="text-2xl font-black text-orange-700">0</span>
+                    <span class="text-xs font-bold text-stone-500">/ 20</span>
+                </div>
+            </div>
+
+            <!-- Enunciado de la pregunta -->
+            <div class="mb-6 bg-white p-5 rounded-2xl border border-amber-200 shadow-sm">
+                <div class="flex justify-between items-center mb-2">
+                    <span id="question-number" class="text-xs font-extrabold text-orange-700 uppercase tracking-wider bg-orange-100 px-3 py-1 rounded-full">Pregunta 1</span>
+                    <span id="question-points" class="text-xs font-bold text-amber-800 bg-amber-100 px-3 py-1 rounded-full">Valor: 2 pts</span>
+                </div>
+                <h3 id="question-text" class="text-lg md:text-xl font-bold text-stone-800 mt-2 leading-relaxed">Cargando pregunta...</h3>
+                <div id="question-image-box" class="hidden mt-4 text-center">
+                    <img id="question-image" src="" alt="Ilustración del problema" class="max-h-56 mx-auto rounded-xl border border-amber-200 shadow">
+                </div>
+            </div>
+
+            <!-- Contenedor dinámico según tipo de pregunta -->
+            <div id="options-container" class="space-y-3"></div>
+        </div>
+
+        <!-- PANTALLA DE RESULTADOS / REPORTE FINAL -->
+        <div id="screen-results" class="hidden p-6 md:p-8 text-center fade-in">
+            <h2 id="end-title" class="text-2xl md:text-3xl font-extrabold mb-2 text-amber-900">¡Evaluación Finalizada!</h2>
+            <p class="text-stone-600 text-base mb-6" id="end-message">Tus resultados han sido registrados correctamente.</p>
+            
+            <!-- Tarjeta de Calificación CNEB -->
+            <div class="bg-white border-2 border-amber-400 rounded-3xl p-6 mb-6 shadow-md max-w-md mx-auto">
+                <p class="text-xs text-stone-500 font-bold uppercase tracking-wider">Alumna Evaluada</p>
+                <p id="report-student" class="text-lg font-extrabold text-stone-800 mb-4">-</p>
+
+                <div class="grid grid-cols-2 gap-4 items-center border-y border-amber-200 py-4 my-2">
+                    <div>
+                        <p class="text-xs text-amber-800 font-bold uppercase">Nota Vigesimal</p>
+                        <p id="final-score" class="text-5xl font-black text-orange-600">00</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-amber-800 font-bold uppercase">Nivel de Logro</p>
+                        <p id="final-letter" class="text-5xl font-black text-amber-800">C</p>
+                    </div>
+                </div>
+
+                <div id="final-badge" class="mt-3 inline-block px-4 py-1.5 rounded-full text-sm font-extrabold bg-amber-100 text-amber-900">
+                    En inicio
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 mt-5 text-xs font-bold">
+                    <div class="bg-emerald-50 text-emerald-800 p-2 rounded-xl border border-emerald-200">
+                        ✅ Correctas: <span id="stat-correctas">0</span>
+                    </div>
+                    <div class="bg-red-50 text-red-800 p-2 rounded-xl border border-red-200">
+                        ❌ Incorrectas: <span id="stat-incorrectas">0</span>
+                    </div>
+                    <div class="bg-stone-100 text-stone-700 p-2 rounded-xl border border-stone-200">
+                        ⬜ En blanco: <span id="stat-blanco">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="save-status" class="text-sm font-semibold text-amber-800 mb-4">
+                ⏳ Guardando calificación en Google Sheets...
+            </div>
+
+            <h3 class="text-lg font-extrabold text-stone-800 mb-3">🏆 Cuadro de Mérito del Aula 🏆</h3>
+            <div class="bg-white rounded-2xl border border-amber-200 p-4 max-h-60 overflow-y-auto mb-6 text-left shadow-inner">
+                <ul id="ranking-list" class="divide-y divide-amber-100">
+                    <li class="py-2 text-center text-stone-500 text-sm">Cargando ranking...</li>
+                </ul>
+            </div>
+
+            <button onclick="location.reload()" class="bg-amber-700 hover:bg-amber-800 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition transform hover:-translate-y-0.5">
+                Volver al Inicio
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // === URL DE DESPLIEGUE GOOGLE APPS SCRIPT ===
+        const GOOGLE_SHEETS_URL = "https://script.google.com/macros/s/AKfycbz0eZBlDE33C3Eck6-p-Pv_PfYandOW-xaPfJCyf8fL3GcyO8EGXoKZef1HAK0ZPnrH/exec";
+
+        // === BANCO DE PREGUNTAS (EXTRAÍDO DEL PDF: PRUEBA DE PROBABILIDADES - 11 PREGUNTAS = 20 PUNTOS) ===
+        const originalQuestions = [
+            {
+                id: 1,
+                type: 'mc',
+                points: 2,
+                q: "En una institución educativa, el 45% de los estudiantes practica fútbol, el 30% juega básquet y el 20% practica ambos deportes. Si se elige un estudiante al azar, ¿cuál es la probabilidad de que no juegue fútbol ni básquet?",
+                options: ["9/20", "5/10", "9/10", "3/20", "55%"],
+                answer: 0
+            },
+            {
+                id: 2,
+                type: 'mc',
+                points: 2,
+                q: "Si lanzas 3 monedas al aire, ¿cuál es la probabilidad de que los tres resultados sean sellos o los tres sean caras al caer al piso?",
+                options: ["1/4", "1/2", "1/6", "1/3"],
+                answer: 0
+            },
+            {
+                id: 3,
+                type: 'mc',
+                points: 2,
+                q: "Al realizar un juego con una ruleta circular numerada del 1 al 8 en sectores iguales, ¿cuál es la probabilidad de que la aguja indique un número par menor que 8 y mayor que 2?",
+                options: ["1/4", "1/2", "1/6", "1/3"],
+                answer: 0
+            },
+            {
+                id: 4,
+                type: 'mc',
+                points: 2,
+                q: "Calcula la probabilidad de obtener dos números iguales al lanzar dos dados comunes al mismo tiempo.",
+                options: ["1/6", "1/2", "1/4", "1/3"],
+                answer: 0
+            },
+            {
+                id: 5,
+                type: 'mc',
+                points: 2,
+                q: "Luego de corregir las evaluaciones de salida, la profesora Jennifer registra: Inicio (0-10): 12 estudiantes; En proceso (11-13): 10 estudiantes; Satisfactorio (14-20): 8 estudiantes. Al elegir a un estudiante del aula al azar, ¿cuál es la probabilidad de que NO tenga un puntaje satisfactorio?",
+                options: ["11/15", "8/9", "1/2", "11/17", "9/13"],
+                answer: 0
+            },
+            {
+                id: 6,
+                type: 'mc',
+                points: 2,
+                q: "Se tiene una caja con 3 bolas rojas, 4 bolas negras y 5 bolas verdes. Determina cuál es la probabilidad de que al extraer una bola al azar sea roja o negra.",
+                options: ["7/12", "3/12", "5/12", "4/21"],
+                answer: 0
+            },
+            {
+                id: 7,
+                type: 'mc',
+                points: 2,
+                q: "Se tiene una caja con 8 bolas negras y 6 bolas verdes. Si se extraen dos bolas consecutivamente con reposición, ¿cuál es la probabilidad de sacar una bola negra y luego una bola verde?",
+                options: ["12/49", "8/14", "6/14", "7/14"],
+                answer: 0
+            },
+            {
+                id: 8,
+                type: 'fill',
+                points: 2,
+                q: "Renato tiene en su alcancía un total de 30 monedas: 5 son de S/1 y las demás son de S/2 y S/5. Si la probabilidad de extraer una moneda de S/2 es de 0,6, ¿cuántas monedas de S/5 hay en la alcancía? Escribe solo el número: ________",
+                accepted: ["7", "07", "siete", "Siete"]
+            },
+            {
+                id: 9,
+                type: 'mc',
+                points: 2,
+                q: "Carlos tiene una caja con 3 bolas rojas y 2 verdes; Pamela tiene otra con 3 rojas y 4 verdes. Deciden juntar todas las bolas en una sola caja y Pamela extrae tres bolas, una por una y sin reposición. ¿Cuál es la probabilidad aproximada de que las tres bolas sean de color verde?",
+                options: ["9%", "8%", "10%", "11%", "12%"],
+                answer: 0
+            },
+            {
+                id: 10,
+                type: 'match',
+                points: 1,
+                q: "Paola tiene 8 blusas (2 azules, 3 rojas, 3 amarillas) y 10 pantalones (4 azules, 2 verdes, 3 negros, 1 blanco). Relaciona cada evento con su probabilidad correcta:",
+                pairs: [
+                    { left: "Sacar blusa roja y pantalón negro", right: "9/80" },
+                    { left: "Probabilidad de elegir una blusa roja", right: "3/8" },
+                    { left: "Probabilidad de elegir un pantalón negro", right: "3/10" }
+                ]
+            },
+            {
+                id: 11,
+                type: 'order',
+                points: 1,
+                q: "Al lanzar 3 monedas sobre la mesa para hallar la probabilidad de obtener 2 caras y 1 sello (3/8), ordena secuencialmente los pasos de resolución:",
+                correctOrder: [
+                    "Determinar el espacio muestral total al lanzar 3 monedas: 2³ = 8 casos posibles.",
+                    "Identificar los casos favorables con 2 caras y 1 sello: {CCS, CSC, SCC} (3 casos).",
+                    "Aplicar la regla de Laplace dividiendo casos favorables entre posibles: P = 3/8."
+                ]
+            }
+        ];
+
+        // === ALGORITMO FISHER-YATES (ANTI-PLAGIO) ===
+        function fisherYatesShuffle(array) {
+            const arr = [...array];
+            for (let i = arr.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [arr[i], arr[j]] = [arr[j], arr[i]];
+            }
+            return arr;
+        }
+
+        // === NOTIFICACIONES ===
+        let notificationTimeout;
+        function showNotification(message) {
+            const notif = document.getElementById('custom-notification');
+            document.getElementById('notification-msg').textContent = message;
+            notif.classList.add('show');
+            clearTimeout(notificationTimeout);
+            notificationTimeout = setTimeout(hideNotification, 4000);
+        }
+
+        function hideNotification() {
+            document.getElementById('custom-notification').classList.remove('show');
+        }
+
+        // === SISTEMA DE AUDIO INTELIGENTE (Tone.js + SpeechSynthesis) ===
+        let audioEnabled = true;
+        const correctSynth = new Tone.PolySynth(Tone.Synth).toDestination();
+        const incorrectSynth = new Tone.Synth().toDestination();
+
+        function toggleAudio() {
+            audioEnabled = !audioEnabled;
+            const btn = document.getElementById('btn-audio-toggle');
+            btn.textContent = audioEnabled ? "🔊 Audio ON" : "🔇 Audio OFF";
+            if (!audioEnabled && 'speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+            }
+        }
+
+        function playAudio(type) {
+            if (!audioEnabled) return;
+            if (Tone.context.state !== 'running') Tone.start();
+            const now = Tone.now();
+            if (type === 'correct') {
+                correctSynth.volume.value = -10;
+                correctSynth.triggerAttackRelease(["C4", "E4", "G4", "C5"], "8n", now);
+            } else if (type === 'incorrect') {
+                incorrectSynth.volume.value = -10;
+                incorrectSynth.triggerAttackRelease("C2", "8n", now);
+            } else if (type === 'finish') {
+                correctSynth.volume.value = -8;
+                correctSynth.triggerAttackRelease(["C4", "E4", "G4", "B4", "C5"], "4n", now);
+            }
+        }
+
+        function speakQuestion(text) {
+            if (!audioEnabled) return;
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const cleanText = text.replace(/[_]/g, ' espacio en blanco ');
+                const utterance = new SpeechSynthesisUtterance(cleanText);
+                utterance.lang = 'es-PE';
+                utterance.rate = 1.08;
+                window.speechSynthesis.speak(utterance);
+            }
+        }
+
+        // === FEEDBACK VISUAL ===
+        const frasesCorrectas = ["¡EXCELENTE!", "¡MUY BIEN!", "¡BRILLANTE!", "¡SIGUE ASÍ!", "¡CORRECTO!"];
+        const frasesIncorrectas = ["¡TÚ PUEDES!", "¡CONCÉNTRATE!", "¡REVISA EL DATO!", "¡ÁNIMO!", "¡ATENTA!"];
+
+        function showFeedback(isCorrect) {
+            const overlay = document.getElementById('feedback-overlay');
+            const textEl = document.getElementById('feedback-text');
+            const frases = isCorrect ? frasesCorrectas : frasesIncorrectas;
+            const fraseAzar = frases[Math.floor(Math.random() * frases.length)];
+
+            textEl.textContent = fraseAzar;
+            textEl.className = `text-4xl md:text-6xl font-black drop-shadow-[0_5px_5px_rgba(0,0,0,0.85)] text-center tracking-wider feedback-pop ${isCorrect ? 'text-amber-300' : 'text-red-400'}`;
+            overlay.classList.remove('hidden');
+
+            setTimeout(() => {
+                overlay.classList.add('hidden');
+                textEl.classList.remove('feedback-pop');
+            }, 950);
+        }
+
+        // === COMUNICACIÓN CON GOOGLE APPS SCRIPT ===
+        const server = {
+            withSuccessHandler: function(callback) {
+                return {
+                    getStudents: function(grado, seccion) {
+                        fetch(`${GOOGLE_SHEETS_URL}?action=getStudents&grado=${encodeURIComponent(grado)}&seccion=${encodeURIComponent(seccion)}`)
+                            .then(response => response.json())
+                            .then(result => {
+                                if (result.success) {
+                                    callback(result.data || []);
+                                } else {
+                                    showNotification("Error al cargar lista: " + (result.message || "Intenta de nuevo."));
+                                    callback([]);
+                                }
+                            })
+                            .catch(error => {
+                                showNotification("Error de conexión con Google Sheets.");
+                                console.error('Error:', error);
+                                callback([]);
+                            });
+                    },
+                    saveScore: async function(payload) {
+                        let ipEstudiante = 'Desconocido';
+                        try {
+                            const res = await fetch('https://1.1.1.1/cdn-cgi/trace');
+                            const text = await res.text();
+                            const match = text.match(/ip=(.*)/);
+                            if (match && match[1]) ipEstudiante = match[1].trim();
+                        } catch (e1) {
+                            try {
+                                const res2 = await fetch('https://api.ipify.org?format=json');
+                                const data = await res2.json();
+                                ipEstudiante = data.ip;
+                            } catch (e2) {
+                                console.warn('No se pudo obtener IP.');
+                            }
+                        }
+
+                        const dataToSend = {
+                            grado: payload.grado,
+                            seccion: payload.seccion,
+                            nombre: payload.nombre,
+                            correctas: payload.correctas,
+                            incorrectas: payload.incorrectas,
+                            enBlanco: payload.enBlanco,
+                            puntaje: payload.puntaje,
+                            letra: payload.letra,
+                            descripcion: payload.descripcion,
+                            ip: ipEstudiante
+                        };
+
+                        fetch(GOOGLE_SHEETS_URL, {
+                            method: 'POST',
+                            mode: 'no-cors',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(dataToSend)
+                        })
+                        .then(() => { callback(true); })
+                        .catch(error => {
+                            console.error('Error POST:', error);
+                            callback(false);
+                        });
+                    },
+                    getRanking: function() {
+                        fetch(`${GOOGLE_SHEETS_URL}?action=getRanking`)
+                            .then(response => response.json())
+                            .then(result => { callback(result.data || []); })
+                            .catch(error => { console.error('Error ranking:', error); callback([]); });
+                    }
+                };
+            }
+        };
+
+        // === VARIABLES DE ESTADO DEL EXAMEN ===
+        let currentQuestions = [];
+        let currentIndex = 0;
+        let lives = 5;
+        let score = 0;
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let blankCount = 0;
+        let studentData = { nombre: '', grado: '', seccion: '' };
+
+        const TIME_PER_QUESTION = 60;
+        let timeLeft = TIME_PER_QUESTION;
+        let timerInterval = null;
+        let questionLocked = false;
+
+        const screens = {
+            register: document.getElementById('screen-register'),
+            game: document.getElementById('screen-game'),
+            results: document.getElementById('screen-results')
+        };
+
+        const elements = {
+            selGrado: document.getElementById('sel-grado'),
+            selSeccion: document.getElementById('sel-seccion'),
+            btnBuscar: document.getElementById('btn-buscar-alumnas'),
+            containerNombre: document.getElementById('container-nombre'),
+            selNombre: document.getElementById('sel-nombre'),
+            btnIniciar: document.getElementById('btn-iniciar'),
+            loadingMsg: document.getElementById('loading-msg'),
+
+            livesContainer: document.getElementById('lives-container'),
+            scoreDisplay: document.getElementById('score-display'),
+            questionNumber: document.getElementById('question-number'),
+            questionPoints: document.getElementById('question-points'),
+            questionText: document.getElementById('question-text'),
+            questionImageBox: document.getElementById('question-image-box'),
+            questionImage: document.getElementById('question-image'),
+            optionsContainer: document.getElementById('options-container'),
+            timerBar: document.getElementById('timer-bar'),
+            timerText: document.getElementById('timer-text'),
+
+            finalScore: document.getElementById('final-score'),
+            finalLetter: document.getElementById('final-letter'),
+            finalBadge: document.getElementById('final-badge'),
+            reportStudent: document.getElementById('report-student'),
+            statCorrectas: document.getElementById('stat-correctas'),
+            statIncorrectas: document.getElementById('stat-incorrectas'),
+            statBlanco: document.getElementById('stat-blanco'),
+            saveStatus: document.getElementById('save-status'),
+            rankingList: document.getElementById('ranking-list'),
+            endTitle: document.getElementById('end-title'),
+            endMessage: document.getElementById('end-message')
+        };
+
+        function showScreen(screenName) {
+            Object.values(screens).forEach(s => s.classList.add('hidden'));
+            screens[screenName].classList.remove('hidden');
+        }
+
+        // === EVENTOS DE REGISTRO ===
+        elements.btnBuscar.addEventListener('click', () => {
+            const grado = elements.selGrado.value;
+            const seccion = elements.selSeccion.value;
+
+            if (!grado || !seccion) {
+                showNotification('Por favor selecciona tu grado y sección.');
+                return;
+            }
+
+            elements.loadingMsg.classList.remove('hidden');
+            elements.btnBuscar.disabled = true;
+            elements.btnBuscar.classList.add('opacity-50', 'cursor-not-allowed');
+
+            server.withSuccessHandler((alumnas) => {
+                elements.loadingMsg.classList.add('hidden');
+                elements.btnBuscar.disabled = false;
+                elements.btnBuscar.classList.remove('opacity-50', 'cursor-not-allowed');
+
+                elements.selNombre.innerHTML = '<option value="">Selecciona tu nombre</option>';
+                if (alumnas && alumnas.length > 0) {
+                    alumnas.forEach(alumna => {
+                        const opt = document.createElement('option');
+                        opt.value = alumna;
+                        opt.textContent = alumna;
+                        elements.selNombre.appendChild(opt);
+                    });
+                    elements.containerNombre.classList.remove('hidden');
+                } else {
+                    showNotification('No se encontraron alumnas registradas para este grado y sección.');
+                }
+            }).getStudents(grado, seccion);
+        });
+
+        elements.btnIniciar.addEventListener('click', () => {
+            const nombre = elements.selNombre.value;
+            if (!nombre) {
+                showNotification("Selecciona tu nombre de la lista para continuar.");
+                return;
+            }
+            studentData = {
+                nombre: nombre,
+                grado: elements.selGrado.value,
+                seccion: elements.selSeccion.value
+            };
+            startGame();
+        });
+
+        // === INICIO DE EVALUACIÓN ===
+        function startGame() {
+            if (Tone.context.state !== 'running') Tone.start();
+
+            // Barajar preguntas con Fisher-Yates
+            currentQuestions = fisherYatesShuffle(originalQuestions);
+            currentIndex = 0;
+            lives = 5;
+            score = 0;
+            correctCount = 0;
+            incorrectCount = 0;
+            blankCount = 0;
+
+            updateLivesUI();
+            updateScoreUI();
+            showScreen('game');
+            loadQuestion();
+        }
+
+        const corazonSVG = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor" class="heart-beat"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>`;
+
+        function updateLivesUI() {
+            elements.livesContainer.innerHTML = '';
+            for (let i = 0; i < 5; i++) {
+                const heart = document.createElement('div');
+                heart.innerHTML = corazonSVG;
+                if (i >= lives) {
+                    heart.querySelector('svg').classList.remove('heart-beat');
+                    heart.querySelector('svg').classList.add('heart-lost');
+                }
+                elements.livesContainer.appendChild(heart);
+            }
+        }
+
+        function updateScoreUI() {
+            elements.scoreDisplay.textContent = score;
+        }
+
+        // === TEMPORIZADOR ===
+        function startTimer() {
+            clearInterval(timerInterval);
+            timeLeft = TIME_PER_QUESTION;
+            updateTimerUI();
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                updateTimerUI();
+                if (timeLeft <= 0) {
+                    clearInterval(timerInterval);
+                    handleTimeout();
+                }
+            }, 1000);
+        }
+
+        function updateTimerUI() {
+            const percentage = (timeLeft / TIME_PER_QUESTION) * 100;
+            elements.timerBar.style.width = `${percentage}%`;
+            elements.timerText.textContent = `${timeLeft}s`;
+
+            if (timeLeft <= 10) {
+                elements.timerBar.classList.replace('bg-amber-600', 'bg-red-600');
+            } else {
+                elements.timerBar.classList.replace('bg-red-600', 'bg-amber-600');
+            }
+        }
+
+        function handleTimeout() {
+            if (questionLocked) return;
+            questionLocked = true;
+            window.speechSynthesis.cancel();
+            playAudio('incorrect');
+            showFeedback(false);
+
+            blankCount++;
+            lives--;
+            updateLivesUI();
+
+            setTimeout(() => {
+                if (lives <= 0) {
+                    // Contabilizar preguntas restantes como en blanco
+                    blankCount += (currentQuestions.length - currentIndex - 1);
+                    endGame(false);
+                } else {
+                    currentIndex++;
+                    loadQuestion();
+                }
+            }, 1600);
+        }
+
+        // === RENDERIZADO DE PREGUNTAS (5 TIPOS SOPORTADOS) ===
+        function loadQuestion() {
+            if (currentIndex >= currentQuestions.length) {
+                endGame(true);
+                return;
+            }
+
+            questionLocked = false;
+            const q = currentQuestions[currentIndex];
+            elements.questionNumber.textContent = `Pregunta ${currentIndex + 1} de ${currentQuestions.length}`;
+            elements.questionPoints.textContent = `Valor: ${q.points} ${q.points === 1 ? 'pto' : 'pts'}`;
+            elements.questionText.textContent = q.q;
+
+            if (q.type === 'image_mc' && q.imageUrl) {
+                elements.questionImage.src = q.imageUrl;
+                elements.questionImageBox.classList.remove('hidden');
+            } else {
+                elements.questionImageBox.classList.add('hidden');
+            }
+
+            elements.optionsContainer.innerHTML = '';
+
+            // TIPO A y D: Opción Múltiple ('mc' / 'image_mc') con Fisher-Yates
+            if (q.type === 'mc' || q.type === 'image_mc') {
+                const indexedOptions = q.options.map((text, idx) => ({
+                    text,
+                    isCorrect: idx === q.answer
+                }));
+                const shuffledOptions = fisherYatesShuffle(indexedOptions);
+
+                const grid = document.createElement('div');
+                grid.className = "grid grid-cols-1 md:grid-cols-2 gap-3";
+
+                shuffledOptions.forEach((optObj, i) => {
+                    const letra = String.fromCharCode(65 + i);
+                    const btn = document.createElement('button');
+                    btn.className = "opt-btn bg-white border-2 border-amber-300 text-stone-800 hover:border-orange-600 hover:bg-amber-100/70 font-semibold py-4 px-5 rounded-xl shadow-sm transition transform hover:-translate-y-0.5 text-left w-full flex items-center gap-3";
+                    btn.dataset.correct = optObj.isCorrect ? "1" : "0";
+                    btn.innerHTML = `<span class="w-8 h-8 rounded-lg bg-amber-100 text-amber-900 font-extrabold flex items-center justify-center shrink-0">${letra}</span><span>${optObj.text}</span>`;
+                    btn.onclick = () => evaluateMC(optObj.isCorrect, btn);
+                    grid.appendChild(btn);
+                });
+                elements.optionsContainer.appendChild(grid);
+            }
+
+            // TIPO B: Completar Espacios ('fill')
+            else if (q.type === 'fill') {
+                const wrapper = document.createElement('div');
+                wrapper.className = "bg-white p-5 rounded-2xl border-2 border-amber-300 space-y-4";
+                wrapper.innerHTML = `
+                    <label class="block text-sm font-bold text-stone-700">Escribe tu respuesta exacta:</label>
+                    <input type="text" id="fill-input" placeholder="Ingresa aquí tu respuesta..." class="w-full p-3.5 border-2 border-amber-300 rounded-xl focus:border-orange-600 outline-none text-lg font-bold text-stone-800">
+                    <button id="btn-submit-fill" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl shadow transition">
+                        Confirmar Respuesta
+                    </button>
+                `;
+                elements.optionsContainer.appendChild(wrapper);
+
+                const inputEl = document.getElementById('fill-input');
+                const submitBtn = document.getElementById('btn-submit-fill');
+                submitBtn.onclick = () => evaluateFill(q, inputEl.value);
+                inputEl.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') evaluateFill(q, inputEl.value);
+                });
+            }
+
+            // TIPO C: Relacionar Términos ('match') con Fisher-Yates en columna derecha
+            else if (q.type === 'match') {
+                const rightOptions = fisherYatesShuffle(q.pairs.map(p => p.right));
+                const wrapper = document.createElement('div');
+                wrapper.className = "bg-white p-5 rounded-2xl border-2 border-amber-300 space-y-4";
+
+                q.pairs.forEach((pair, idx) => {
+                    const row = document.createElement('div');
+                    row.className = "grid grid-cols-1 md:grid-cols-2 gap-3 items-center bg-amber-50/70 p-3 rounded-xl border border-amber-200";
+                    
+                    let optionsHtml = '<option value="">-- Selecciona pareja --</option>';
+                    rightOptions.forEach(rOpt => {
+                        optionsHtml += `<option value="${rOpt}">${rOpt}</option>`;
+                    });
+
+                    row.innerHTML = `
+                        <div class="font-bold text-stone-800 text-sm md:text-base">${pair.left}</div>
+                        <select data-idx="${idx}" class="match-select w-full p-2.5 border-2 border-amber-300 rounded-lg bg-white font-semibold text-stone-800 outline-none focus:border-orange-600">
+                            ${optionsHtml}
+                        </select>
+                    `;
+                    wrapper.appendChild(row);
+                });
+
+                const btnSubmit = document.createElement('button');
+                btnSubmit.className = "w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl shadow transition mt-2";
+                btnSubmit.textContent = "Verificar Relaciones";
+                btnSubmit.onclick = () => evaluateMatch(q);
+                wrapper.appendChild(btnSubmit);
+
+                elements.optionsContainer.appendChild(wrapper);
+            }
+
+            // TIPO E: Ordenar Secuencias ('order') con Fisher-Yates
+            else if (q.type === 'order') {
+                let currentOrderItems = fisherYatesShuffle(q.correctOrder);
+                // Asegurar que no inicie ya ordenada si hay más de 1 elemento
+                if (currentOrderItems.join('|') === q.correctOrder.join('|') && currentOrderItems.length > 1) {
+                    [currentOrderItems[0], currentOrderItems[1]] = [currentOrderItems[1], currentOrderItems[0]];
+                }
+
+                const wrapper = document.createElement('div');
+                wrapper.className = "bg-white p-5 rounded-2xl border-2 border-amber-300 space-y-3";
+                wrapper.innerHTML = `<p class="text-xs font-bold text-amber-800 uppercase">Usa las flechas ⬆️ ⬇️ para ordenar correctamente:</p>`;
+
+                const listContainer = document.createElement('div');
+                listContainer.id = "order-list";
+                listContainer.className = "space-y-2";
+
+                function renderOrderItems() {
+                    listContainer.innerHTML = '';
+                    currentOrderItems.forEach((itemText, idx) => {
+                        const itemDiv = document.createElement('div');
+                        itemDiv.className = "flex items-center justify-between gap-3 bg-amber-50 border border-amber-300 p-3 rounded-xl";
+                        itemDiv.innerHTML = `
+                            <span class="font-extrabold text-orange-700 text-sm">${idx + 1}.</span>
+                            <span class="flex-1 font-semibold text-stone-800 text-sm md:text-base">${itemText}</span>
+                            <div class="flex gap-1 shrink-0">
+                                <button type="button" class="btn-up bg-white border border-amber-300 px-2.5 py-1 rounded-lg hover:bg-amber-200 font-bold text-xs" ${idx === 0 ? 'disabled opacity-30' : ''}>⬆️</button>
+                                <button type="button" class="btn-down bg-white border border-amber-300 px-2.5 py-1 rounded-lg hover:bg-amber-200 font-bold text-xs" ${idx === currentOrderItems.length - 1 ? 'disabled opacity-30' : ''}>⬇️</button>
+                            </div>
+                        `;
+                        itemDiv.querySelector('.btn-up').onclick = () => {
+                            if (idx > 0) {
+                                [currentOrderItems[idx - 1], currentOrderItems[idx]] = [currentOrderItems[idx], currentOrderItems[idx - 1]];
+                                renderOrderItems();
+                            }
+                        };
+                        itemDiv.querySelector('.btn-down').onclick = () => {
+                            if (idx < currentOrderItems.length - 1) {
+                                [currentOrderItems[idx + 1], currentOrderItems[idx]] = [currentOrderItems[idx], currentOrderItems[idx + 1]];
+                                renderOrderItems();
+                            }
+                        };
+                        listContainer.appendChild(itemDiv);
+                    });
+                }
+
+                renderOrderItems();
+                wrapper.appendChild(listContainer);
+
+                const btnSubmit = document.createElement('button');
+                btnSubmit.className = "w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-3 rounded-xl shadow transition mt-3";
+                btnSubmit.textContent = "Confirmar Orden";
+                btnSubmit.onclick = () => evaluateOrder(q, currentOrderItems);
+                wrapper.appendChild(btnSubmit);
+
+                elements.optionsContainer.appendChild(wrapper);
+            }
+
+            startTimer();
+            speakQuestion(q.q);
+        }
+
+        // === EVALUACIÓN DE RESPUESTAS ===
+        function evaluateMC(isCorrect, btnElement) {
+            if (questionLocked) return;
+            questionLocked = true;
+            clearInterval(timerInterval);
+            window.speechSynthesis.cancel();
+
+            const buttons = elements.optionsContainer.querySelectorAll('.opt-btn');
+            buttons.forEach(b => {
+                b.disabled = true;
+                if (b.dataset.correct === "1") {
+                    b.classList.remove('border-amber-300', 'bg-white');
+                    b.classList.add('border-emerald-600', 'bg-emerald-500', 'text-white');
+                }
+            });
+
+            if (!isCorrect) {
+                btnElement.classList.remove('border-amber-300', 'bg-white');
+                btnElement.classList.add('border-red-600', 'bg-red-600', 'text-white');
+            }
+
+            finalizeQuestionResult(isCorrect);
+        }
+
+        function evaluateFill(q, userValue) {
+            if (questionLocked) return;
+            const cleaned = userValue.trim().toLowerCase();
+            if (!cleaned) {
+                showNotification("Escribe una respuesta antes de confirmar.");
+                return;
+            }
+            questionLocked = true;
+            clearInterval(timerInterval);
+            window.speechSynthesis.cancel();
+
+            const isCorrect = q.accepted.some(ans => ans.trim().toLowerCase() === cleaned);
+            finalizeQuestionResult(isCorrect);
+        }
+
+        function evaluateMatch(q) {
+            if (questionLocked) return;
+            const selects = elements.optionsContainer.querySelectorAll('.match-select');
+            let allSelected = true;
+            selects.forEach(s => { if (!s.value) allSelected = false; });
+            if (!allSelected) {
+                showNotification("Completa todas las relaciones antes de verificar.");
+                return;
+            }
+
+            questionLocked = true;
+            clearInterval(timerInterval);
+            window.speechSynthesis.cancel();
+
+            let isCorrect = true;
+            selects.forEach((s, idx) => {
+                s.disabled = true;
+                if (s.value !== q.pairs[idx].right) {
+                    isCorrect = false;
+                    s.classList.add('border-red-500', 'bg-red-50');
+                } else {
+                    s.classList.add('border-emerald-500', 'bg-emerald-50');
+                }
+            });
+
+            finalizeQuestionResult(isCorrect);
+        }
+
+        function evaluateOrder(q, userOrder) {
+            if (questionLocked) return;
+            questionLocked = true;
+            clearInterval(timerInterval);
+            window.speechSynthesis.cancel();
+
+            const isCorrect = userOrder.every((val, idx) => val === q.correctOrder[idx]);
+            finalizeQuestionResult(isCorrect);
+        }
+
+        function finalizeQuestionResult(isCorrect) {
+            const q = currentQuestions[currentIndex];
+            if (isCorrect) {
+                playAudio('correct');
+                showFeedback(true);
+                score += q.points;
+                correctCount++;
+                updateScoreUI();
+            } else {
+                playAudio('incorrect');
+                showFeedback(false);
+                incorrectCount++;
+                lives--;
+                updateLivesUI();
+            }
+
+            setTimeout(() => {
+                if (lives <= 0) {
+                    blankCount += (currentQuestions.length - currentIndex - 1);
+                    endGame(false);
+                } else {
+                    currentIndex++;
+                    loadQuestion();
+                }
+            }, 1500);
+        }
+
+        // === CÁLCULO DE ESCALA VIGESIMAL Y REPORTE FINAL ===
+        function getGradeDetails(finalPoints) {
+            const rounded = Math.round(finalPoints);
+            if (rounded >= 18) {
+                return { letra: "AD", descripcion: "Logro destacado", badgeClass: "bg-emerald-100 text-emerald-900 border border-emerald-300" };
+            } else if (rounded >= 15) {
+                return { letra: "A", descripcion: "Logro esperado / Satisfactorio", badgeClass: "bg-blue-100 text-blue-900 border border-blue-300" };
+            } else if (rounded >= 11) {
+                return { letra: "B", descripcion: "En proceso", badgeClass: "bg-amber-100 text-amber-900 border border-amber-300" };
+            } else {
+                return { letra: "C", descripcion: "En inicio / Reprobado", badgeClass: "bg-red-100 text-red-900 border border-red-300" };
+            }
+        }
+
+        function endGame(completedAll) {
+            clearInterval(timerInterval);
+            window.speechSynthesis.cancel();
+            playAudio('finish');
+            showScreen('results');
+
+            const finalPoints = Math.min(20, Math.max(0, score));
+            const formattedScore = finalPoints < 10 ? `0${finalPoints}` : `${finalPoints}`;
+            const gradeInfo = getGradeDetails(finalPoints);
+
+            elements.reportStudent.textContent = `${studentData.nombre} (${studentData.grado}° "${studentData.seccion}")`;
+            elements.finalScore.textContent = formattedScore;
+            elements.finalLetter.textContent = gradeInfo.letra;
+            elements.finalBadge.textContent = `${gradeInfo.letra} — ${gradeInfo.descripcion}`;
+            elements.finalBadge.className = `mt-3 inline-block px-4 py-1.5 rounded-full text-sm font-extrabold ${gradeInfo.badgeClass}`;
+
+            elements.statCorrectas.textContent = correctCount;
+            elements.statIncorrectas.textContent = incorrectCount;
+            elements.statBlanco.textContent = blankCount;
+
+            if (completedAll) {
+                elements.endTitle.textContent = "¡Felicitaciones, completaste la evaluación!";
+                elements.endTitle.className = "text-2xl md:text-3xl font-extrabold mb-2 text-amber-900";
+                elements.endMessage.textContent = "Has concluido todas las preguntas de Probabilidades.";
+            } else {
+                elements.endTitle.textContent = "¡Evaluación concluida (vidas agotadas)!";
+                elements.endTitle.className = "text-2xl md:text-3xl font-extrabold mb-2 text-red-700";
+                elements.endMessage.textContent = "Repasa los conceptos de Probabilidades y sigue practicando.";
+            }
+
+            const payload = {
+                grado: studentData.grado,
+                seccion: studentData.seccion,
+                nombre: studentData.nombre,
+                correctas: correctCount,
+                incorrectas: incorrectCount,
+                enBlanco: blankCount,
+                puntaje: finalPoints,
+                letra: gradeInfo.letra,
+                descripcion: gradeInfo.descripcion
+            };
+
+            server.withSuccessHandler((ok) => {
+                elements.saveStatus.textContent = ok
+                    ? "✅ Calificación registrada exitosamente en Google Sheets."
+                    : "⚠️ Nota procesada localmente (verifica conexión con Sheets).";
+                loadRanking();
+            }).saveScore(payload);
+        }
+
+        function loadRanking() {
+            elements.rankingList.innerHTML = '<li class="py-2 text-center text-stone-500 text-sm">Actualizando cuadro de mérito...</li>';
+
+            server.withSuccessHandler((ranking) => {
+                elements.rankingList.innerHTML = '';
+                if (!ranking || ranking.length === 0) {
+                    elements.rankingList.innerHTML = '<li class="py-2 text-center text-stone-500 text-sm">Aún no hay registros disponibles en el ranking.</li>';
+                    return;
+                }
+
+                ranking.forEach((r, index) => {
+                    const li = document.createElement('li');
+                    li.className = "py-3 flex justify-between items-center";
+
+                    let badgeColor = "bg-amber-100 text-amber-900";
+                    if (index === 0) badgeColor = "bg-yellow-400 text-yellow-950";
+                    else if (index === 1) badgeColor = "bg-stone-300 text-stone-800";
+                    else if (index === 2) badgeColor = "bg-orange-300 text-orange-950";
+
+                    li.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="w-8 h-8 rounded-full ${badgeColor} flex items-center justify-center font-extrabold shadow-sm text-sm">${index + 1}</span>
+                            <div>
+                                <p class="font-bold text-stone-800 text-sm">${r.nombre}</p>
+                                <p class="text-xs text-stone-500">${r.grado}° "${r.seccion}"</p>
+                            </div>
+                        </div>
+                        <div class="font-black text-orange-700 text-base">${r.puntaje} pts</div>
+                    `;
+                    elements.rankingList.appendChild(li);
+                });
+            }).getRanking();
+        }
+    </script>
+</body>
+</html>
